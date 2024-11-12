@@ -1,35 +1,57 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { catchError, Observable, throwError, tap } from 'rxjs';
+import { catchError, Observable, tap, of, map, switchMap } from 'rxjs';
 import { Product } from './product';
+import { HttpErrorService } from '../utilities/http-error.service';
+import { ReviewService } from '../reviews/review.service';
+import { Review } from '../reviews/review';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ProductService {
   private productsUrl = 'api/products';
-
   private http = inject(HttpClient);
+  private errorService = inject(HttpErrorService);
+  private reviewService = inject(ReviewService);
+  readonly product$ = this.http.get<Product[]>(this.productsUrl)
+  .pipe(
+      tap(() => console.log('In http.get pipeline')),
+      catchError(err => this.handleError(err))
+  );
 
   getProducts(): Observable<Product[]>{
     return this.http.get<Product[]>(this.productsUrl)
       .pipe(
-        tap(() => console.log('In http.get pipeline')),
-        catchError(this.handleError)
+          tap(() => console.log('In http.get pipeline')),
+          catchError(err => this.handleError(err))
       );
   }
 
   getProduct(id: number): Observable<Product>{
-    const url = `${this.productsUrl}/${id}`;
-    return this.http.get<Product>(url)
+    const productUrl = `${this.productsUrl}/${id}`;
+    return this.http.get<Product>(productUrl)
       .pipe(
         tap(() => console.log('In http.get pipeline')),
-        catchError(this.handleError));
+        switchMap(product => this.getProductWithReviews(product)),
+        catchError(err => this.handleError(err))
+      )
   }
 
-  private handleError(err: any): Observable<never> {
-    console.error(err);
-    return throwError(() => new Error('An error occurred while fetching products.'));
+  private getProductWithReviews(product: Product): Observable<Product>{
+    if(product.hasReviews){
+      return this.http.get<Review[]>(this.reviewService.getReviewUrl(product.id))
+      .pipe(
+        map(reviews => ({...product, reviews} as Product)),
+      )
+    } else {
+      return of(product);
+    }
+  }
+
+  private handleError(err: HttpErrorResponse): Observable<never> {
+    const formattedMessage = this.errorService.formatError(err);
+    throw formattedMessage;
   }
 }
 
