@@ -18,7 +18,7 @@ export class ProductListComponent {
   private productService = inject(ProductService);
   // Products
   readonly products$ = this.productService
-  .product$
+  .products$
   .pipe(
     catchError(err => {
       this.errorMessage = err
@@ -31,5 +31,6 @@ export class ProductListComponent {
 
   onSelected(productId: number): void {
     this.selectedProductId = productId
+    this.productService.productSelected(productId)
   }
 }
