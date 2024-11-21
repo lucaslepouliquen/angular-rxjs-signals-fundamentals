@@ -13,16 +13,15 @@ import { EMPTY, tap, catchError } from 'rxjs';
 
 export class ProductListComponent {
   pageTitle = 'Products';
-  errorMessage = '';
 
   private productService = inject(ProductService);
   // Products
   products = this.productService.products
+  errorMessage = this.productService.productsError;
   // Selected product id to highlight the entry
-  selectedProductId: number = 0;
+  selectedProductId = this.productService.selectedProductId;
 
   onSelected(productId: number): void {
-    this.selectedProductId = productId
     this.productService.productSelected(productId)
   }
 }
